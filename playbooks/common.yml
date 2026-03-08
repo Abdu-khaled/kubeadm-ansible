@@ -1,0 +1,129 @@
+---
+- name: Prepare all Kubernetes nodes
+  hosts: k8s_cluster
+  become: true
+
+  tasks:
+
+    # -----------------------------
+    # Swap
+    # -----------------------------
+    - name: Disable swap now
+      ansible.builtin.command: swapoff -a
+      changed_when: false
+
+    - name: Disable swap permanently
+      ansible.builtin.replace:
+        path: /etc/fstab
+        regexp: '^(.*\sswap\s+sw\s+.*)$'
+        replace: '# \1'
+
+    # -----------------------------
+    # Kernel modules
+    # -----------------------------
+    - name: Load kernel modules configuration
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/k8s.conf
+        content: |
+          overlay
+          br_netfilter
+
+    - name: Enable kernel modules
+      ansible.builtin.modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - overlay
+        - br_netfilter
+
+    # -----------------------------
+    # Sysctl configuration
+    # -----------------------------
+    - name: Apply sysctl settings for Kubernetes
+      ansible.builtin.sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { name: net.bridge.bridge-nf-call-iptables, value: 1 }
+        - { name: net.bridge.bridge-nf-call-ip6tables, value: 1 }
+        - { name: net.ipv4.ip_forward, value: 1 }
+
+    # -----------------------------
+    # Base packages
+    # -----------------------------
+    - name: Install base packages
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+        state: present
+        update_cache: yes
+
+    # -----------------------------
+    # Kubernetes repository
+    # -----------------------------
+    - name: Ensure keyrings directory exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Download Kubernetes apt key
+      ansible.builtin.get_url:
+        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+        dest: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        mode: '0644'
+
+    - name: Add Kubernetes apt repository
+      ansible.builtin.copy:
+        dest: /etc/apt/sources.list.d/kubernetes.list
+        content: |
+          deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /
+
+    # -----------------------------
+    # Install containerd & Kubernetes
+    # -----------------------------
+    - name: Install containerd and Kubernetes components
+      ansible.builtin.apt:
+        name:
+          - containerd
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: present
+        update_cache: yes
+
+    # -----------------------------
+    # Configure containerd
+    # -----------------------------
+    - name: Generate default containerd config
+      ansible.builtin.command: containerd config default
+      register: containerd_default
+      changed_when: false
+
+    - name: Write containerd config file
+      ansible.builtin.copy:
+        dest: /etc/containerd/config.toml
+        content: "{{ containerd_default.stdout | regex_replace('SystemdCgroup = false','SystemdCgroup = true') }}"
+
+    - name: Enable and restart containerd
+      ansible.builtin.systemd:
+        name: containerd
+        enabled: true
+        state: restarted
+
+    # -----------------------------
+    # Hold Kubernetes packages
+    # -----------------------------
+    - name: Hold Kubernetes packages using dpkg_selections
+      ansible.builtin.dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - kubelet
+        - kubeadm
+        - kubectl
