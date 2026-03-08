@@ -63,3 +63,10 @@ venv/
 *.swp
 *.swo
 *.bak
+
+# Vagrant
+.vagrant/
+
+# SSH keys
+*.pem
+*.key
