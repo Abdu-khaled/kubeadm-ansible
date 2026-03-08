@@ -1,0 +1,66 @@
+# -----------------------------
+# Inventory files
+# -----------------------------
+# Ignore inventory with real IPs / credentials
+inventory/hosts.ini
+
+# Keep template safe for sharing
+!inventory/hosts.ini.template
+
+# -----------------------------
+# SSH keys
+# -----------------------------
+# Ignore private SSH keys
+~/.ssh/id_rsa
+~/.ssh/id_rsa.pub
+~/.ssh/*_rsa
+~/.ssh/*.pub
+
+# -----------------------------
+# Kubeadm / Kubernetes
+# -----------------------------
+# Ignore kube config files (contains cluster credentials)
+~/.kube/config
+/etc/kubernetes/admin.conf
+
+# Ignore etcd and CNI configs if ever copied locally
+/var/lib/etcd/
+/etc/cni/net.d/
+
+# -----------------------------
+# Ansible artifacts
+# -----------------------------
+# Retry files
+*.retry
+# Fact cache
+.fact_cache/
+# Logs
+*.log
+# Vault files (if used)
+*.vault
+
+# -----------------------------
+# Docker / container runtime
+# -----------------------------
+/var/lib/docker/
+/var/lib/containerd/
+/tmp/
+
+# -----------------------------
+# Python / Virtualenv
+# -----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+.env
+
+# -----------------------------
+# OS / Editor / Misc
+# -----------------------------
+.DS_Store
+*.swp
+*.swo
+*.bak
