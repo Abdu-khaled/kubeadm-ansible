@@ -3,7 +3,6 @@
 # -----------------------------
 # Ignore inventory with real IPs / credentials
 inventory/hosts.ini
-
 # Keep template safe for sharing
 !inventory/hosts.ini.template
 
