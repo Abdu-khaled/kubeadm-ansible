@@ -12,6 +12,8 @@
         --pod-network-cidr=10.244.0.0/16
       args:
         creates: /etc/kubernetes/admin.conf
+      environment:
+        PATH: "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
     - name: Create .kube directory for remote user
       ansible.builtin.file:

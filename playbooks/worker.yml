@@ -20,3 +20,26 @@
       ansible.builtin.command: "{{ kubeadm_join_cmd }}"
       args:
         creates: /etc/kubernetes/kubelet.conf
+
+    - name: Create .kube directory for remote user on workers
+      ansible.builtin.file:
+        path: /home/{{ ansible_user }}/.kube
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0755"
+
+    - name: Read admin kubeconfig from control plane
+      ansible.builtin.slurp:
+        src: /etc/kubernetes/admin.conf
+      delegate_to: "{{ groups['control_plane'][0] }}"
+      run_once: true
+      register: admin_kubeconfig
+
+    - name: Copy admin kubeconfig to worker user
+      ansible.builtin.copy:
+        content: "{{ admin_kubeconfig.content | b64decode }}"
+        dest: /home/{{ ansible_user }}/.kube/config
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: "0644"

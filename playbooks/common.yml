@@ -66,17 +66,27 @@
     # -----------------------------
     # Kubernetes repository
     # -----------------------------
+    - name: Remove old Kubernetes repository list
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/kubernetes.list
+        state: absent
+
     - name: Ensure keyrings directory exists
       ansible.builtin.file:
         path: /etc/apt/keyrings
         state: directory
         mode: '0755'
 
-    - name: Download Kubernetes apt key
-      ansible.builtin.get_url:
-        url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
-        dest: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-        mode: '0644'
+    - name: Remove old Kubernetes apt key if exists
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        state: absent
+
+    - name: Download and dearmor Kubernetes apt key
+      ansible.builtin.shell: |
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | \
+        gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      changed_when: true
 
     - name: Add Kubernetes apt repository
       ansible.builtin.copy:
@@ -100,6 +110,12 @@
     # -----------------------------
     # Configure containerd
     # -----------------------------
+    - name: Ensure containerd config directory exists
+      ansible.builtin.file:
+        path: /etc/containerd
+        state: directory
+        mode: '0755'
+
     - name: Generate default containerd config
       ansible.builtin.command: containerd config default
       register: containerd_default
